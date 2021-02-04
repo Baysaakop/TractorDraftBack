@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'c^-*o(i9ky+-^+=3ll1%%xang(f#c(!%$ummqykw)8v#&iws!)'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'tractordraftback.herokuapp.com']
 
