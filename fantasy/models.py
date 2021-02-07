@@ -89,6 +89,7 @@ class League(models.Model):
     number = models.IntegerField(default=0)    
     level = models.IntegerField(default=1)
     description = models.TextField(blank=True, null=True)
+    isFinished = models.BooleanField(default=False)
     image = models.ImageField(upload_to=item_directory_path, null=True, blank=True)
     table = models.ForeignKey(Table, on_delete=models.CASCADE, null=True)    
     gameweeks = models.ManyToManyField(Gameweek, null=True, blank=True)    
