@@ -6,7 +6,7 @@ class CareerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Career
         fields = (            
-            'level', 'total_champion', 'total_runnerup', 'total_third', 'total_point', 'total_win', 'total_draw', 'total_loss', 'total_score', 'total_score_away', 'total_appearance', 'total_topscorer', 'total_vanga'
+            'id', 'level', 'total_champion', 'total_runnerup', 'total_third', 'total_point', 'total_win', 'total_draw', 'total_loss', 'total_score', 'total_score_away', 'total_appearance', 'total_topscorer', 'total_topscorer_away', 'total_vanga'
         )        
 
 class ManagerSerializer(serializers.ModelSerializer): 

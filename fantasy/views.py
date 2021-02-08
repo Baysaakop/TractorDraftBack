@@ -111,6 +111,8 @@ def update(gameweek, data):
                 away_team.save() 
     # Set ranks                    
     setRanks(teams)          
+    resetCareer(teams, league.level)
+    setCareer(teams, league.level)
     
 def resetTeams(teams):
     for team in teams: 
@@ -143,4 +145,57 @@ def setRanks(teams):
         team.rank = rank        
         rank = rank + 1
         team.save()
+
+def resetCareer(teams, level):
+    for team in teams:
+        manager = team.manager        
+        careers = manager.career.filter(level=level)      
+        if not careers:
+            career = Career.objects.create(
+                level = level
+            )
+            career.save()
+            manager.career.add(career)
+        else:
+            career = careers[0]                            
+            career.total_point = 0
+            career.total_win = 0
+            career.total_draw = 0
+            career.total_loss = 0
+            career.total_score = 0
+            career.total_score_away = 0
+            career.total_appearance = 0
+            career.total_topscorer = 0
+            career.total_topscorer_away = 0
+            career.total_vanga = 0
+            career.save()    
+            manager.save()
+
+def setCareer(teams, level):        
+    for team in teams:
+        manager = team.manager                
+        careers = manager.career.filter(level=level)            
+        career = careers[0]
+        seasons = League.objects.filter(level=level)
+        for season in seasons:
+            table = season.table
+            tableteams = table.teams.all()
+            for tableteam in tableteams:
+                if (tableteam.manager == manager):
+                    career.total_point += tableteam.points
+                    career.total_win += tableteam.wins
+                    career.total_draw += tableteam.draws
+                    career.total_loss += tableteam.losses
+                    career.total_score += tableteam.score
+                    career.total_score_away += tableteam.score_away
+                    career.total_topscorer += tableteam.topscorer
+                    career.total_topscorer_away += tableteam.topscorer_away
+                    career.total_vanga += tableteam.vanga
+                    career.total_appearance += 1
+        career.save()                    
+        print(career.total_score)
+        manager.save()
+        
+
+    
             
