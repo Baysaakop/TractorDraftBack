@@ -18,6 +18,7 @@ class Career(models.Model):
     total_score_away = models.IntegerField(default=0)
     total_appearance = models.IntegerField(default=0)
     total_topscorer = models.IntegerField(default=0)
+    total_topscorer_away = models.IntegerField(default=0)
     total_vanga = models.IntegerField(default=0)
 
 class Manager(models.Model):
@@ -61,9 +62,13 @@ class TableTeam(models.Model):
     rank = models.IntegerField(default=0)
     wins = models.IntegerField(default=0)        
     draws = models.IntegerField(default=0)   
-    losses = models.IntegerField(default=0)                
+    losses = models.IntegerField(default=0)    
+    points = models.IntegerField(default=0)            
     score = models.IntegerField(default=0)
-    points = models.IntegerField(default=0)
+    score_away = models.IntegerField(default=0)   
+    topscorer = models.IntegerField(default=0) 
+    topscorer_away = models.IntegerField(default=0) 
+    vanga = models.IntegerField(default=0) 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, related_name="tableteam_created_by")

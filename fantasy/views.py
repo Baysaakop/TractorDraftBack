@@ -11,23 +11,27 @@ class ManagerViewSet(viewsets.ModelViewSet):
     serializer_class = ManagerSerializer
     queryset = Manager.objects.all()
 
-    def update(self, request, pk=None):
-        instance = self.get_object()
-        updateCareer(instance.id)
-        return super().update(request)
-
 class MatchViewSet(viewsets.ModelViewSet):
     serializer_class = MatchSerializer
     queryset = Match.objects.all()
-
-    def update(self, request, pk=None):
-        instance = self.get_object()
-        updateLeague(instance.id)
-        return super().update(request)
+    # def update(self, request, pk=None):
+    #     instance = self.get_object()
+    #     updateLeague(instance.id)
+    #     return super().update(request)
 
 class GameweekViewSet(viewsets.ModelViewSet):
     serializer_class = GameweekSerializer
     queryset = Gameweek.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        partial = True
+        instance = self.get_object()
+        update(instance, request.data)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        # Do ViewSet work.
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 class TableTeamViewSet(viewsets.ModelViewSet):
     serializer_class = TableTeamSerializer
@@ -53,68 +57,90 @@ class League19ViewSet(viewsets.ModelViewSet):
     serializer_class = League19Serializer
     queryset = League19.objects.all()
 
-def updateLeague(id):
-    match = Match.objects.get(pk=id)
-    gm = Gameweek.objects.get(matches=match)
-    league = League.objects.get(gameweeks=gm)
+def update(gameweek, data):
+    league = League.objects.get(gameweeks=gameweek)
     table = league.table
-    tableteams = table.teams.all()           
-    resetTeams(tableteams)
+    teams = table.teams.all()  
+    # Update Match
+    for match in data['matches']:
+        id = match['id']
+        home_team = match['home_team']
+        away_team = match['away_team']
+        home_score = match['home_score']
+        away_score = match['away_score']            
+        targetmatch = Match.objects.get(id=id)
+        targetmatch.home_score = home_score
+        targetmatch.away_score = away_score
+        targetmatch.save()
+    gameweek.save()
+    # Update Table Team        
+    resetTeams(teams)
     for week in league.gameweeks.all():
+        scores = []
+        for ma in week.matches.all():
+            scores.append(ma.home_score)
+            scores.append(ma.away_score)
         for m in week.matches.all():
-            home_team = tableteams.get(manager=m.home_team)
-            away_team = tableteams.get(manager=m.away_team)   
-            home_team.score = home_team.score + m.home_score
-            away_team.score = away_team.score + m.away_score       
-            if (m.home_score > m.away_score):            
-                home_team.wins = home_team.wins + 1
-                away_team.losses = away_team.losses + 1        
-                home_team.points = home_team.points + 3        
-            elif (m.home_score < m.away_score):
-                away_team.wins = away_team.wins + 1
-                home_team.losses = home_team.losses + 1
-                away_team.points = away_team.points + 3
-            else:
-                home_team.draws = home_team.draws + 1
-                away_team.draws = away_team.draws + 1     
-                home_team.points = home_team.points + 1
-                away_team.points = away_team.points + 1
-            home_team.save()
-            away_team.save()            
+            if (m.home_score > 0 and m.away_score > 0):
+                home_team = teams.get(manager=m.home_team)
+                away_team = teams.get(manager=m.away_team)   
+                home_team.score += m.home_score
+                home_team.score_away += m.away_score
+                away_team.score += m.away_score
+                away_team.score_away += m.home_score                          
+                if (m.home_score > m.away_score):            
+                    home_team.wins = home_team.wins + 1
+                    away_team.losses = away_team.losses + 1        
+                    home_team.points = home_team.points + 3        
+                elif (m.home_score < m.away_score):
+                    away_team.wins = away_team.wins + 1
+                    home_team.losses = home_team.losses + 1
+                    away_team.points = away_team.points + 3
+                else:
+                    home_team.draws = home_team.draws + 1
+                    away_team.draws = away_team.draws + 1     
+                    home_team.points = home_team.points + 1
+                    away_team.points = away_team.points + 1
+                if (m.home_score == max(scores)):
+                    home_team.topscorer += 1
+                    away_team.topscorer_away += 1        
+                if (m.away_score == max(scores)):
+                    away_team.topscorer += 1
+                    home_team.topscorer_away += 1
+                home_team.save()
+                away_team.save() 
+    # Set ranks                    
+    setRanks(teams)          
     
 def resetTeams(teams):
     for team in teams: 
         team.rank = 0       
         team.score = 0
+        team.score_away = 0
         team.points = 0
         team.wins = 0
         team.draws = 0
         team.losses = 0
+        team.topscorer = 0
+        team.topscorer_away = 0        
         team.save()
 
-def setRanks(teams):    
-    mylist = sorted(teams, key=lambda x: (x.points, x.score))
-    rank = 10
-    for team in mylist: 
+class TeamObj:
+    def __init__(self, id, points, score):
+        self.id = id
+        self.points = points
+        self.score = score
+
+def setRanks(teams):            
+    list = []
+    for team in teams: 
+        t = TeamObj(team.id, team.points, team.score)
+        list.append(t)
+    sortedlist = sorted(list, key=lambda x: (x.points, x.score))
+    rank = 1
+    for item in sortedlist:
+        team = teams.get(id=item.id)
         team.rank = rank        
-        rank = rank - 1
+        rank = rank + 1
         team.save()
-            
-
-# def updateCareer(id):
-#     manager = Manager.objects.get(pk=id)    
-#     teams = TableTeam.objects.filter(manager=manager)
-#     for team in teams:
-#         table = Table.objects.get(teams=team)
-#         league = League.objects.get(table=table)
-#         manager.career.get_or_create(level=league.level)
-#         manager.career.total_point += team.points
-#         manager.career.total_score += team.score
-#         manager.career.total_win += team.wins
-#         manager.career.total_draw += team.draws
-#         manager.career.total_loss += team.losses
-#         if team.rank == 1:
-#             manager.career.total_champion += 1
-#         elif team.rank == 2:
-#             manager.career.total_runnerup += 1
             

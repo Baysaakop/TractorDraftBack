@@ -11,55 +11,47 @@ class CareerSerializer(serializers.ModelSerializer):
 
 class ManagerSerializer(serializers.ModelSerializer): 
     image = serializers.ImageField(required=False, use_url=True)
-    career = CareerSerializer(many=True, read_only=True)
+    career = CareerSerializer(many=True)
     class Meta:
         model = Manager
         fields = (
             'id', 'name', 'description', 'career', 'image', 'created_by', 'updated_by', 'created_at', 'updated_at'            
         )        
 
-class MatchSerializer(serializers.ModelSerializer):
-    token = serializers.CharField(write_only=True) 
+class MatchSerializer(serializers.ModelSerializer):    
     home_team = ManagerSerializer(read_only=True)
     away_team = ManagerSerializer(read_only=True)
     class Meta:
         model = Match
         fields = (
             'id', 'created_by', 'updated_by', 'created_at', 'updated_at',
-            'home_team', 'away_team', 'home_score', 'away_score', 'token'
+            'home_team', 'away_team', 'home_score', 'away_score'
         )     
 
-    def update(self, instance, validated_data):                
-        user = Token.objects.get(key=validated_data['token']).user   
-        instance.home_score = validated_data.get('home_score', instance.home_score)
-        instance.away_score= validated_data.get('away_score', instance.away_score)
-        instance.updated_by = user        
-        instance.save()
-        return instance   
-
 class GameweekSerializer(serializers.ModelSerializer): 
+    token = serializers.CharField(write_only=True) 
     matches = MatchSerializer(many=True, read_only=True)
     class Meta:
         model = Gameweek
         fields = (
-            'id', 'name', 'week', 'matches', 'created_by', 'updated_by', 'created_at', 'updated_at',            
+            'id', 'name', 'week', 'matches', 'token'          
         )  
 
 class TableTeamSerializer(serializers.ModelSerializer):   
-    manager = ManagerSerializer(read_only=True) 
+    manager = ManagerSerializer() 
     manager_name = serializers.SerializerMethodField('get_manager_name')   
     class Meta:
         model = TableTeam
         fields = (
             'id', 'name', 'manager', 'manager_name', 'rank', 'created_by', 'updated_by', 'created_at', 'updated_at',
-            'wins', 'draws', 'losses', 'score', 'points'
+            'wins', 'draws', 'losses', 'score', 'score_away', 'points', 'topscorer', 'topscorer_away', 'vanga'
         )  
 
     def get_manager_name(self, obj):
         return obj.manager.name
 
 class TableSerializer(serializers.ModelSerializer):    
-    teams = TableTeamSerializer(many=True, read_only=True) 
+    teams = TableTeamSerializer(many=True) 
     class Meta:
         model = Table
         fields = (
@@ -68,8 +60,8 @@ class TableSerializer(serializers.ModelSerializer):
 
 class LeagueSerializer(serializers.ModelSerializer):    
     # token = serializers.CharField(write_only=True)
-    table = TableSerializer(read_only=True)
-    gameweeks = GameweekSerializer(many=True, read_only=True)         
+    table = TableSerializer()
+    gameweeks = GameweekSerializer(many=True)         
     class Meta:
         model = League
         fields = (
@@ -77,8 +69,8 @@ class LeagueSerializer(serializers.ModelSerializer):
         )      
 
 class DuelSerializer(serializers.ModelSerializer):     
-    team1 = ManagerSerializer(read_only=True) 
-    team2 = ManagerSerializer(read_only=True) 
+    team1 = ManagerSerializer() 
+    team2 = ManagerSerializer() 
     class Meta:
         model = Duel
         fields = (            
@@ -86,7 +78,7 @@ class DuelSerializer(serializers.ModelSerializer):
         )  
 
 class League19TeamSerializer(serializers.ModelSerializer):     
-    manager = ManagerSerializer(read_only=True) 
+    manager = ManagerSerializer() 
     class Meta:
         model = League19Team
         fields = (            
