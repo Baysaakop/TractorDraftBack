@@ -17,6 +17,7 @@ class Career(models.Model):
     total_score = models.IntegerField(default=0)
     total_score_away = models.IntegerField(default=0)
     total_appearance = models.IntegerField(default=0)
+    total_match = models.IntegerField(default=0)
     total_topscorer = models.IntegerField(default=0)
     total_topscorer_away = models.IntegerField(default=0)
     total_vanga = models.IntegerField(default=0)

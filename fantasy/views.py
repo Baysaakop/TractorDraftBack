@@ -62,16 +62,45 @@ def update(gameweek, data):
     table = league.table
     teams = table.teams.all()  
     # Update Match
-    for match in data['matches']:
-        id = match['id']
-        home_team = match['home_team']
-        away_team = match['away_team']
-        home_score = match['home_score']
-        away_score = match['away_score']            
-        targetmatch = Match.objects.get(id=id)
-        targetmatch.home_score = home_score
-        targetmatch.away_score = away_score
-        targetmatch.save()
+    for d in data['matches']:
+        match = Match.objects.get(id=d['id'])                
+        home_score = d['home_score']
+        away_score = d['away_score']                    
+        match.home_score = home_score
+        match.away_score = away_score
+        match.save()        
+        home_team = match.home_team
+        away_team = match.away_team
+        duels = Duel.objects.filter(Q(team1=home_team, team2=away_team) | Q(team1=away_team, team2=home_team))
+        if not duels:            
+            duel = Duel.objects.create(
+                team1=home_team,
+                team2=away_team
+            )
+            if (home_score > away_score):
+                duel.win1 += 1
+            elif (home_score < away_score):
+                duel.win2 += 1
+            else:
+                duel.draw += 1
+            duel.save()
+        else:            
+            duel = duels[0]            
+            if (duel.team1 == home_team):
+                if (home_score > away_score):
+                    duel.win1 += 1
+                elif (home_score < away_score):
+                    duel.win2 += 1
+                else:
+                    duel.draw += 1
+            else:
+                if (away_score > home_score):
+                    duel.win1 += 1
+                elif (away_score < home_score):
+                    duel.win2 += 1
+                else:
+                    duel.draw += 1        
+            duel.save()
     gameweek.save()
     # Update Table Team        
     resetTeams(teams)
@@ -127,21 +156,9 @@ def resetTeams(teams):
         team.topscorer_away = 0        
         team.save()
 
-class TeamObj:
-    def __init__(self, id, points, score):
-        self.id = id
-        self.points = points
-        self.score = score
-
 def setRanks(teams):            
-    list = []
-    for team in teams: 
-        t = TeamObj(team.id, team.points, team.score)
-        list.append(t)
-    sortedlist = sorted(list, key=lambda x: (x.points, x.score))
     rank = 1
-    for item in sortedlist:
-        team = teams.get(id=item.id)
+    for team in teams.order_by('-points', '-score'):
         team.rank = rank        
         rank = rank + 1
         team.save()
@@ -165,6 +182,7 @@ def resetCareer(teams, level):
             career.total_score = 0
             career.total_score_away = 0
             career.total_appearance = 0
+            career.total_match = 0
             career.total_topscorer = 0
             career.total_topscorer_away = 0
             career.total_vanga = 0
@@ -191,9 +209,10 @@ def setCareer(teams, level):
                     career.total_topscorer += tableteam.topscorer
                     career.total_topscorer_away += tableteam.topscorer_away
                     career.total_vanga += tableteam.vanga
-                    career.total_appearance += 1
+                    career.total_match += (tableteam.wins + tableteam.draws + tableteam.losses)
+                    if ((tableteam.wins + tableteam.draws + tableteam.losses) == 9):
+                        career.total_appearance += 1
         career.save()                    
-        print(career.total_score)
         manager.save()
         
 

@@ -6,7 +6,7 @@ class CareerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Career
         fields = (            
-            'id', 'level', 'total_champion', 'total_runnerup', 'total_third', 'total_point', 'total_win', 'total_draw', 'total_loss', 'total_score', 'total_score_away', 'total_appearance', 'total_topscorer', 'total_topscorer_away', 'total_vanga'
+            'id', 'level', 'total_champion', 'total_runnerup', 'total_third', 'total_point', 'total_win', 'total_draw', 'total_loss', 'total_score', 'total_score_away', 'total_appearance', 'total_match', 'total_topscorer', 'total_topscorer_away', 'total_vanga'
         )        
 
 class ManagerSerializer(serializers.ModelSerializer): 
@@ -74,7 +74,7 @@ class DuelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Duel
         fields = (            
-            'team1', 'team2', 'win1', 'win2', 'draw'
+            'id', 'team1', 'team2', 'win1', 'win2', 'draw'
         )  
 
 class League19TeamSerializer(serializers.ModelSerializer):     
