@@ -1,6 +1,8 @@
+from django.contrib.auth.models import User
+from django.db import models
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
-from .models import Career, Manager, Match, Gameweek, TableTeam, Table, League, Duel, League19, League19Team
+from .models import Career, Manager, Match, Gameweek, TableTeam, Table, League, Duel, League19, League19Team, Post
 
 class CareerSerializer(serializers.ModelSerializer):     
     class Meta:
@@ -92,3 +94,40 @@ class League19Serializer(serializers.ModelSerializer):
         fields = (
             'id', 'teams', 'created_by', 'updated_by', 'created_at', 'updated_at'            
         ) 
+
+class UserSerializer(serializers.ModelSerializer):    
+    class Meta:
+        model = User
+        fields = (
+            'id', 'username', 'email', 'first_name', 'last_name', 'profile'
+        )
+
+class PostSerializer(serializers.ModelSerializer):       
+    token = serializers.CharField(write_only=True)        
+    thumbnail = serializers.ImageField(required=False, use_url=True)        
+    created_by = UserSerializer(read_only=True)
+    class Meta:
+        model = Post
+        fields = (
+            'id', 'title', 'content', 'thumbnail', 'created_at', 'created_by', 'token'            
+        ) 
+
+    def create(self, validated_data):                   
+        user = Token.objects.get(key=validated_data['token']).user                
+        post = Post(
+            title=validated_data['title'],
+            content=validated_data['content'],
+            thumbnail=validated_data['thumbnail'],
+            created_by=user 
+        )
+        post.save()
+        return post
+
+    def update(self, instance, validated_data):                
+        user = Token.objects.get(key=validated_data['token']).user   
+        instance.title = validated_data.get('title', instance.title)
+        instance.content = validated_data.get('content', instance.content)
+        instance.thumbnail = validated_data.get('thumbnail', instance.thumbnail)
+        instance.updated_by = user        
+        instance.save()
+        return instance

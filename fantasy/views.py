@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
-from .models import Career, Manager, Match, Gameweek, TableTeam, Table, League, Duel, League19Team, League19
-from .serializers import ManagerSerializer, MatchSerializer, GameweekSerializer, TableTeamSerializer, TableSerializer, LeagueSerializer, DuelSerializer, League19Serializer, League19TeamSerializer
+from .models import Career, Manager, Match, Gameweek, TableTeam, Table, League, Duel, League19Team, League19, Post
+from .serializers import ManagerSerializer, MatchSerializer, GameweekSerializer, TableTeamSerializer, TableSerializer, LeagueSerializer, DuelSerializer, League19Serializer, League19TeamSerializer, PostSerializer
 from rest_framework import viewsets
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
@@ -215,6 +215,9 @@ def setCareer(teams, level):
         career.save()                    
         manager.save()
         
+class PostViewSet(viewsets.ModelViewSet):
+    serializer_class = PostSerializer
+    queryset = Post.objects.order_by('-created_at')
 
     
             
