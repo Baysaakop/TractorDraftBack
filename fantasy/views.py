@@ -72,88 +72,166 @@ def update(gameweek, data):
     league = League.objects.get(gameweeks=gameweek)
     table = league.table
     teams = table.teams.all()
-    # Update Match
+    scores = []
     for d in data['matches']:
+        # Update Match
         match = Match.objects.get(id=d['id'])
         home_score = d['home_score']
         away_score = d['away_score']
+        scores.append(home_score)
+        scores.append(away_score)
         match.home_score = home_score
         match.away_score = away_score
         match.save()
         home_team = match.home_team
         away_team = match.away_team
-        duels = Duel.objects.filter(
-            Q(team1=home_team, team2=away_team) | Q(team1=away_team, team2=home_team))
+        # Update table team
+        home_tableteam = teams.get(manager=home_team)
+        away_tableteam = teams.get(manager=away_team)
+        home_tableteam.score += home_score
+        away_tableteam.score += away_score
+        home_tableteam.score_away += away_score
+        away_tableteam.score_away += home_score
+        if home_score > away_score:
+            home_tableteam.wins += 1
+            away_tableteam.losses += 1
+            home_tableteam.points += 3
+        elif away_score > home_score:
+            away_tableteam.wins += 1
+            home_tableteam.losses += 1
+            away_tableteam.points += 3
+        else:
+            home_tableteam.draws += 1
+            away_tableteam.draws += 1
+            home_tableteam.points += 1
+            away_tableteam.points += 1
+        home_tableteam.save()
+        away_tableteam.save()
+        duel = None
+        duels = Duel.objects.filter(Q(team1=match.home_team, team2=match.away_team) | Q(
+            team2=match.home_team, team1=match.away_team))
         if not duels:
             duel = Duel.objects.create(
-                team1=home_team,
-                team2=away_team
-            )
-            if (home_score > away_score):
+                team1=match.home_team, team2=match.away_team)
+        else:
+            duel = duels[0]
+        if duel.team1 == match.home_team:
+            if match.home_score > match.away_score:
                 duel.win1 += 1
-            elif (home_score < away_score):
+            elif match.away_score > match.home_score:
                 duel.win2 += 1
             else:
                 duel.draw += 1
-            duel.save()
         else:
-            duel = duels[0]
-            if (duel.team1 == home_team):
-                if (home_score > away_score):
-                    duel.win1 += 1
-                elif (home_score < away_score):
-                    duel.win2 += 1
-                else:
-                    duel.draw += 1
+            if match.home_score > match.away_score:
+                duel.win2 += 1
+            elif match.away_score > match.home_score:
+                duel.win1 += 1
             else:
-                if (away_score > home_score):
-                    duel.win1 += 1
-                elif (away_score < home_score):
-                    duel.win2 += 1
-                else:
-                    duel.draw += 1
-            duel.save()
+                duel.draw += 1
+        duel.save()
     gameweek.save()
-    # Update Table Team
-    resetTeams(teams)
-    for week in league.gameweeks.all():
-        scores = []
-        for ma in week.matches.all():
-            scores.append(ma.home_score)
-            scores.append(ma.away_score)
-        for m in week.matches.all():
-            if (m.home_score > 0 and m.away_score > 0):
-                home_team = teams.get(manager=m.home_team)
-                away_team = teams.get(manager=m.away_team)
-                home_team.score += m.home_score
-                home_team.score_away += m.away_score
-                away_team.score += m.away_score
-                away_team.score_away += m.home_score
-                if (m.home_score > m.away_score):
-                    home_team.wins = home_team.wins + 1
-                    away_team.losses = away_team.losses + 1
-                    home_team.points = home_team.points + 3
-                elif (m.home_score < m.away_score):
-                    away_team.wins = away_team.wins + 1
-                    home_team.losses = home_team.losses + 1
-                    away_team.points = away_team.points + 3
-                else:
-                    home_team.draws = home_team.draws + 1
-                    away_team.draws = away_team.draws + 1
-                    home_team.points = home_team.points + 1
-                    away_team.points = away_team.points + 1
-                if (m.home_score == max(scores)):
-                    home_team.topscorer += 1
-                    away_team.topscorer_away += 1
-                if (m.away_score == max(scores)):
-                    away_team.topscorer += 1
-                    home_team.topscorer_away += 1
-                home_team.save()
-                away_team.save()
-    # Set ranks
+    # Update top scorer
+    matches = gameweek.matches.all().filter(
+        Q(home_score=max(scores)) | Q(away_score=max(scores)))
+    for match in matches:
+        if match.home_score > match.away_score:
+            winner = teams.get(manager=match.home_team)
+            winner.topscorer += 1
+            loser = teams.get(manager=match.away_team)
+            loser.topscorer_away += 1
+            winner.save()
+            loser.save()
+        elif match.away_score < match.home_score:
+            winner = teams.get(manager=match.away_team)
+            winner.topscorer += 1
+            loser = teams.get(manager=match.home_team)
+            loser.topscorer_away += 1
+            winner.save()
+            loser.save()
+        else:
+            player1 = teams.get(manager=match.home_team)
+            player2 = teams.get(manager=match.away_team)
+            player1.topscorer += 1
+            player2.topscorer += 1
+            player1.topscorer_away += 1
+            player2.topscorer_away += 1
+            player1.save()
+            player2.save()
     setRanks(teams)
-    resetCareer(teams, league.level)
-    setCareer(teams, league.level)
+    # # Update Table Team
+    # resetTeams(teams)
+    # for week in league.gameweeks.all():
+    #     scores = []
+    #     for ma in week.matches.all():
+    #         scores.append(ma.home_score)
+    #         scores.append(ma.away_score)
+    #     for m in week.matches.all():
+    #         if (m.home_score > 0 and m.away_score > 0):
+    #             home_team = teams.get(manager=m.home_team)
+    #             away_team = teams.get(manager=m.away_team)
+    #             home_team.score += m.home_score
+    #             home_team.score_away += m.away_score
+    #             away_team.score += m.away_score
+    #             away_team.score_away += m.home_score
+    #             if (m.home_score > m.away_score):
+    #                 home_team.wins = home_team.wins + 1
+    #                 away_team.losses = away_team.losses + 1
+    #                 home_team.points = home_team.points + 3
+    #             elif (m.home_score < m.away_score):
+    #                 away_team.wins = away_team.wins + 1
+    #                 home_team.losses = home_team.losses + 1
+    #                 away_team.points = away_team.points + 3
+    #             else:
+    #                 home_team.draws = home_team.draws + 1
+    #                 away_team.draws = away_team.draws + 1
+    #                 home_team.points = home_team.points + 1
+    #                 away_team.points = away_team.points + 1
+    #             if (m.home_score == max(scores)):
+    #                 home_team.topscorer += 1
+    #                 away_team.topscorer_away += 1
+    #             if (m.away_score == max(scores)):
+    #                 away_team.topscorer += 1
+    #                 home_team.topscorer_away += 1
+    #             home_team.save()
+    #             away_team.save()
+    # # Set ranks
+    # setRanks(teams)
+    # resetCareer(teams, league.level)
+    # setCareer(teams, league.level)
+
+
+def setRanks(teams):
+    rank = 1
+    for team in teams.order_by('-points', '-score'):
+        team.rank = rank
+        rank = rank + 1
+        team.save()
+
+
+def updateCareer(teams, level):
+    for team in teams:
+        manager = team.manager
+        career, created = Career.objects.get_or_create(
+            manager=manager, level=level)
+        career.total_point += team.points
+        career.total_win += team.wins
+        career.total_draw += team.draws
+        career.total_loss += team.losses
+        career.total_score += team.score
+        career.total_score_away += team.score_away
+        career.total_topscorer += team.topscorer
+        career.total_topscorer_away += team.topscorer_away
+        career.total_vanga += team.vanga
+        career.total_appearance += 1
+        career.total_match += 9
+        if team.rank == 1:
+            career.total_champion += 1
+        elif team.rank == 2:
+            career.total_runnerup += 1
+        elif team.rank == 3:
+            career.total_third += 1
+        career.save()
 
 
 def resetTeams(teams):
@@ -167,14 +245,6 @@ def resetTeams(teams):
         team.losses = 0
         team.topscorer = 0
         team.topscorer_away = 0
-        team.save()
-
-
-def setRanks(teams):
-    rank = 1
-    for team in teams.order_by('-points', '-score'):
-        team.rank = rank
-        rank = rank + 1
         team.save()
 
 
