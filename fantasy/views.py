@@ -52,6 +52,18 @@ class LeagueViewSet(viewsets.ModelViewSet):
     serializer_class = LeagueSerializer
     queryset = League.objects.all()
 
+    def update(self, request, *args, **kwargs):
+        partial = True
+        instance = self.get_object()
+        if 'finish' in request.data:
+            finish(instance)
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        # Do ViewSet work.
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
 
 class DuelViewSet(viewsets.ModelViewSet):
     serializer_class = DuelSerializer
@@ -142,7 +154,7 @@ def update(gameweek, data):
             loser.topscorer_away += 1
             winner.save()
             loser.save()
-        elif match.away_score < match.home_score:
+        elif match.away_score > match.home_score:
             winner = teams.get(manager=match.away_team)
             winner.topscorer += 1
             loser = teams.get(manager=match.home_team)
@@ -159,46 +171,6 @@ def update(gameweek, data):
             player1.save()
             player2.save()
     setRanks(teams)
-    # # Update Table Team
-    # resetTeams(teams)
-    # for week in league.gameweeks.all():
-    #     scores = []
-    #     for ma in week.matches.all():
-    #         scores.append(ma.home_score)
-    #         scores.append(ma.away_score)
-    #     for m in week.matches.all():
-    #         if (m.home_score > 0 and m.away_score > 0):
-    #             home_team = teams.get(manager=m.home_team)
-    #             away_team = teams.get(manager=m.away_team)
-    #             home_team.score += m.home_score
-    #             home_team.score_away += m.away_score
-    #             away_team.score += m.away_score
-    #             away_team.score_away += m.home_score
-    #             if (m.home_score > m.away_score):
-    #                 home_team.wins = home_team.wins + 1
-    #                 away_team.losses = away_team.losses + 1
-    #                 home_team.points = home_team.points + 3
-    #             elif (m.home_score < m.away_score):
-    #                 away_team.wins = away_team.wins + 1
-    #                 home_team.losses = home_team.losses + 1
-    #                 away_team.points = away_team.points + 3
-    #             else:
-    #                 home_team.draws = home_team.draws + 1
-    #                 away_team.draws = away_team.draws + 1
-    #                 home_team.points = home_team.points + 1
-    #                 away_team.points = away_team.points + 1
-    #             if (m.home_score == max(scores)):
-    #                 home_team.topscorer += 1
-    #                 away_team.topscorer_away += 1
-    #             if (m.away_score == max(scores)):
-    #                 away_team.topscorer += 1
-    #                 home_team.topscorer_away += 1
-    #             home_team.save()
-    #             away_team.save()
-    # # Set ranks
-    # setRanks(teams)
-    # resetCareer(teams, league.level)
-    # setCareer(teams, league.level)
 
 
 def setRanks(teams):
@@ -207,6 +179,12 @@ def setRanks(teams):
         team.rank = rank
         rank = rank + 1
         team.save()
+
+
+def finish(league):
+    table = league.table
+    teams = table.teams.all()
+    updateCareer(teams)
 
 
 def updateCareer(teams, level):
