@@ -184,7 +184,7 @@ def setRanks(teams):
 def finish(league):
     table = league.table
     teams = table.teams.all()
-    updateCareer(teams)
+    updateCareer(teams, league.level)
 
 
 def updateCareer(teams, level):
@@ -210,6 +210,9 @@ def updateCareer(teams, level):
         elif team.rank == 3:
             career.total_third += 1
         career.save()
+        if created:
+            manager.career.add(career)
+            manager.save()
 
 
 def resetTeams(teams):
