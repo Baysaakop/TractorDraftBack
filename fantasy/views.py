@@ -57,6 +57,8 @@ class LeagueViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         if 'finish' in request.data:
             finish(instance)
+            instance.isFinished = True
+            instance.save()
         serializer = self.get_serializer(
             instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
