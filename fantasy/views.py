@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from .models import Career, Manager, Match, Gameweek, TableTeam, Table, League, Duel, League19Team, League19, Post
 from .serializers import ManagerSerializer, MatchSerializer, GameweekSerializer, TableTeamSerializer, TableSerializer, LeagueSerializer, DuelSerializer, League19Serializer, League19TeamSerializer, PostSerializer
 from rest_framework import viewsets
-from django.db.models import Q
+from django.db.models import Q, manager
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 
@@ -16,6 +16,16 @@ class ManagerViewSet(viewsets.ModelViewSet):
 class MatchViewSet(viewsets.ModelViewSet):
     serializer_class = MatchSerializer
     queryset = Match.objects.all()
+
+    def get_queryset(self):
+        queryset = Match.objects.all()
+        manager = self.request.query_params.get('manager', None)
+        if manager is not None:
+            manager_obj = Manager.objects.get(pk=int(manager))
+            queryset = queryset.filter(
+                Q(home_team=manager_obj) | Q(away_team=manager_obj)).order_by('created_at')
+        return queryset
+
     # def update(self, request, pk=None):
     #     instance = self.get_object()
     #     updateLeague(instance.id)
